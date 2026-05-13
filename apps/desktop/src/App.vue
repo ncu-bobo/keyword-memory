@@ -1,8 +1,11 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, nextTick, onMounted, ref } from "vue";
 import {
   BookOpenCheck,
   ClipboardPaste,
+  LogOut,
+  Mail,
+  Plus,
   RotateCcw,
   Save,
   Search,
@@ -11,7 +14,8 @@ import {
   Star,
   Tags,
   Trash2,
-  UserRound
+  UserRound,
+  X
 } from "lucide-vue-next";
 import {
   createLocalKnowledgeItem,
@@ -23,7 +27,16 @@ import {
   type ParsedKnowledgeItem,
   type ReviewResult
 } from "@keyword-memory/core";
-import { addItems, loadItems, reviewItem, saveItems } from "./storage";
+import {
+  addItems,
+  getCurrentUser,
+  isSupabaseConfigured,
+  loadItems,
+  reviewItem,
+  saveItems,
+  signInOrSignUp,
+  signOut
+} from "./storage";
 
 type Tab = "capture" | "review" | "me";
 type CaptureMode = "manual" | "ai";
@@ -32,7 +45,7 @@ const activeTab = ref<Tab>("capture");
 const captureMode = ref<CaptureMode>("manual");
 const items = ref<KnowledgeItem[]>([]);
 const title = ref("");
-const keywords = ref("");
+const keywordBlocks = ref<string[]>([""]);
 const tag = ref("");
 const pinned = ref(false);
 const sourceText = ref("");
@@ -40,12 +53,41 @@ const parseStatus = ref<"idle" | "loading" | "ready" | "error">("idle");
 const parsedItems = ref<ParsedKnowledgeItem[]>([]);
 const revealedId = ref<string | null>(null);
 const toast = ref("");
+const supabaseReady = isSupabaseConfigured();
+const authEmail = ref("");
+const authPassword = ref("");
+const currentUserEmail = ref("");
+const syncStatus = ref<"local" | "signed-out" | "syncing" | "synced" | "error">(
+  supabaseReady ? "signed-out" : "local"
+);
 
 const dueItems = computed(() => sortReviewQueue(items.value.filter((item) => isDueForReview(item))));
+const manualKeywords = computed(() =>
+  Array.from(new Set(keywordBlocks.value.map((keyword) => keyword.trim()).filter(Boolean)))
+);
 const tags = computed(() =>
   Array.from(new Set(items.value.map((item) => item.tag).filter(Boolean) as string[]))
 );
 const savedCount = computed(() => items.value.length);
+const syncLabel = computed(() => {
+  if (!supabaseReady) {
+    return "未配置 Supabase";
+  }
+
+  if (syncStatus.value === "syncing") {
+    return "同步中";
+  }
+
+  if (syncStatus.value === "synced") {
+    return "已连接";
+  }
+
+  if (syncStatus.value === "error") {
+    return "同步异常";
+  }
+
+  return "未登录";
+});
 
 function showToast(message: string) {
   toast.value = message;
@@ -58,9 +100,42 @@ function showToast(message: string) {
 
 function clearManual() {
   title.value = "";
-  keywords.value = "";
+  keywordBlocks.value = [""];
   tag.value = "";
   pinned.value = false;
+}
+
+async function addKeywordBlock() {
+  keywordBlocks.value = [...keywordBlocks.value, ""];
+  await nextTick();
+  const inputs = document.querySelectorAll<HTMLInputElement>(".keyword-block input");
+  inputs[inputs.length - 1]?.focus();
+}
+
+function removeKeywordBlock(index: number) {
+  if (keywordBlocks.value.length === 1) {
+    keywordBlocks.value = [""];
+    return;
+  }
+
+  keywordBlocks.value = keywordBlocks.value.filter((_, currentIndex) => currentIndex !== index);
+}
+
+function updateKeywordBlock(index: number, value: string) {
+  const pastedKeywords = splitKeywords(value);
+
+  if (pastedKeywords.length > 1) {
+    keywordBlocks.value = [
+      ...keywordBlocks.value.slice(0, index),
+      ...pastedKeywords,
+      ...keywordBlocks.value.slice(index + 1)
+    ];
+    return;
+  }
+
+  keywordBlocks.value = keywordBlocks.value.map((keyword, currentIndex) =>
+    currentIndex === index ? value : keyword
+  );
 }
 
 async function pasteClipboard() {
@@ -72,24 +147,26 @@ async function pasteClipboard() {
 
   const lines = text.split(/\n+/).map((line) => line.trim()).filter(Boolean);
   title.value = lines[0]?.slice(0, 42) ?? "";
-  keywords.value = splitKeywords(lines.slice(1).join(" ") || text).slice(0, 10).join("、");
+  const pastedKeywords = splitKeywords(lines.slice(1).join(" ") || text).slice(0, 10);
+  keywordBlocks.value = pastedKeywords.length > 0 ? pastedKeywords : [""];
   showToast("已从剪贴板拆入标题和关键词");
 }
 
-function saveManual() {
-  if (!title.value.trim() || splitKeywords(keywords.value).length === 0) {
+async function saveManual() {
+  if (!title.value.trim() || manualKeywords.value.length === 0) {
     showToast("标题和关键词都要填");
     return;
   }
 
   const item = createLocalKnowledgeItem({
     title: title.value,
-    keywords: keywords.value,
+    keywords: manualKeywords.value.join("、"),
     tag: tag.value,
     pinned: pinned.value
   });
 
-  items.value = addItems([item]);
+  items.value = await addItems([item]);
+  syncStatus.value = currentUserEmail.value ? "synced" : syncStatus.value;
   clearManual();
   showToast("已保存，进入复习队列");
 }
@@ -139,7 +216,7 @@ function fallbackParse(text: string): ParsedKnowledgeItem[] {
   }));
 }
 
-function saveParsedItems() {
+async function saveParsedItems() {
   const now = new Date().toISOString();
   const nextItems: KnowledgeItem[] = parsedItems.value
     .filter((item) => item.title.trim() && item.keywords.length > 0)
@@ -162,27 +239,81 @@ function saveParsedItems() {
     return;
   }
 
-  items.value = addItems(nextItems);
+  items.value = await addItems(nextItems);
+  syncStatus.value = currentUserEmail.value ? "synced" : syncStatus.value;
   sourceText.value = "";
   parsedItems.value = [];
   parseStatus.value = "idle";
   showToast(`已保存 ${nextItems.length} 条知识点`);
 }
 
-function handleReview(id: string, result: ReviewResult) {
-  items.value = reviewItem(id, result);
+async function handleReview(id: string, result: ReviewResult) {
+  items.value = await reviewItem(id, result);
+  syncStatus.value = currentUserEmail.value ? "synced" : syncStatus.value;
   revealedId.value = null;
 }
 
-function togglePin(item: KnowledgeItem) {
+async function togglePin(item: KnowledgeItem) {
   items.value = items.value.map((current) =>
     current.id === item.id ? { ...current, pinned: !current.pinned, updatedAt: new Date().toISOString() } : current
   );
-  saveItems(items.value);
+  await saveItems(items.value);
+  syncStatus.value = currentUserEmail.value ? "synced" : syncStatus.value;
 }
 
-onMounted(() => {
-  items.value = loadItems();
+async function refreshItems() {
+  syncStatus.value = currentUserEmail.value ? "syncing" : syncStatus.value;
+  try {
+    items.value = await loadItems();
+    syncStatus.value = currentUserEmail.value ? "synced" : syncStatus.value;
+  } catch {
+    syncStatus.value = "error";
+    items.value = await loadItems();
+  }
+}
+
+async function refreshAuthState() {
+  const user = await getCurrentUser();
+  currentUserEmail.value = user?.email ?? "";
+  syncStatus.value = !supabaseReady ? "local" : currentUserEmail.value ? "synced" : "signed-out";
+}
+
+async function handleAuth() {
+  if (!authEmail.value.trim() || authPassword.value.length < 6) {
+    showToast("请输入邮箱和至少 6 位密码");
+    return;
+  }
+
+  syncStatus.value = "syncing";
+
+  try {
+    const result = await signInOrSignUp(authEmail.value, authPassword.value);
+    await refreshAuthState();
+    await refreshItems();
+    authPassword.value = "";
+
+    if (result.needsConfirmation) {
+      showToast("已创建账号，请先在邮箱里确认注册");
+      return;
+    }
+
+    showToast("Supabase 已连接并同步");
+  } catch {
+    syncStatus.value = "error";
+    showToast("登录失败，请检查邮箱、密码或 Supabase 配置");
+  }
+}
+
+async function handleSignOut() {
+  await signOut();
+  currentUserEmail.value = "";
+  syncStatus.value = supabaseReady ? "signed-out" : "local";
+  showToast("已退出云同步，本地数据仍可使用");
+}
+
+onMounted(async () => {
+  await refreshAuthState();
+  await refreshItems();
   window.keywordMemory?.onQuickCapture(() => {
     activeTab.value = "capture";
     captureMode.value = "manual";
@@ -236,7 +367,11 @@ onMounted(() => {
         </div>
       </header>
 
-      <div v-if="activeTab === 'capture'" class="capture-grid">
+      <div
+        v-if="activeTab === 'capture'"
+        class="capture-grid"
+        :class="{ 'manual-mode': captureMode === 'manual' }"
+      >
         <section class="panel capture-panel">
           <div class="segmented">
             <button :class="{ active: captureMode === 'manual' }" @click="captureMode = 'manual'">手动速记</button>
@@ -250,8 +385,31 @@ onMounted(() => {
             </label>
             <label>
               <span>核心关键词</span>
-              <textarea v-model="keywords" rows="4" placeholder="useEffect、闭包、依赖数组、状态滞后" />
+              <div class="keyword-board">
+                <div v-for="(_, index) in keywordBlocks" :key="index" class="keyword-block">
+                  <input
+                    :value="keywordBlocks[index]"
+                    :placeholder="index === 0 ? 'useEffect' : '关键词'"
+                    @input="updateKeywordBlock(index, ($event.target as HTMLInputElement).value)"
+                  />
+                  <button
+                    type="button"
+                    class="keyword-remove"
+                    title="移除关键词"
+                    @click="removeKeywordBlock(index)"
+                  >
+                    <X :size="15" />
+                  </button>
+                </div>
+                <button type="button" class="keyword-add" @click="addKeywordBlock">
+                  <Plus :size="16" />
+                  添加关键词
+                </button>
+              </div>
             </label>
+            <div v-if="manualKeywords.length" class="keyword-preview">
+              <span v-for="keyword in manualKeywords" :key="keyword">{{ keyword }}</span>
+            </div>
             <label>
               <span>归属标签</span>
               <input v-model="tag" placeholder="不强制，例如：程序员技术" />
@@ -294,7 +452,7 @@ onMounted(() => {
           </div>
         </section>
 
-        <section class="panel result-panel">
+        <section v-if="captureMode === 'ai'" class="panel result-panel">
           <div class="panel-heading">
             <Sparkles :size="19" />
             <strong>解析结果</strong>
@@ -359,7 +517,38 @@ onMounted(() => {
             <Settings :size="19" />
             <strong>同步设置</strong>
           </div>
-          <p>Supabase 接入后会在这里展示登录、云同步和导出入口。</p>
+          <div class="sync-status" :class="syncStatus">
+            <span>{{ syncLabel }}</span>
+            <small v-if="currentUserEmail">{{ currentUserEmail }}</small>
+            <small v-else-if="supabaseReady">登录后会自动合并本地与云端知识点。</small>
+            <small v-else>请先填写 VITE_SUPABASE_URL 和 VITE_SUPABASE_ANON_KEY。</small>
+          </div>
+
+          <div v-if="supabaseReady && !currentUserEmail" class="auth-form">
+            <label>
+              <span>邮箱</span>
+              <input v-model="authEmail" type="email" placeholder="you@example.com" />
+            </label>
+            <label>
+              <span>密码</span>
+              <input v-model="authPassword" type="password" placeholder="至少 6 位" @keydown.enter="handleAuth" />
+            </label>
+            <button class="primary-button" :disabled="syncStatus === 'syncing'" @click="handleAuth">
+              <Mail :size="17" />
+              登录 / 注册
+            </button>
+          </div>
+
+          <div v-if="supabaseReady && currentUserEmail" class="sync-actions">
+            <button class="soft-button" :disabled="syncStatus === 'syncing'" @click="refreshItems">
+              <RotateCcw :size="17" />
+              立即同步
+            </button>
+            <button class="soft-button" @click="handleSignOut">
+              <LogOut :size="17" />
+              退出
+            </button>
+          </div>
         </article>
         <article class="panel tag-panel">
           <div class="panel-heading">

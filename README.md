@@ -40,4 +40,4 @@ cp supabase/functions/parse-knowledge/.env.example supabase/functions/parse-know
 
 - Home: manual quick capture and AI text extraction.
 - Review: masked keyword recall with remembered/vague/forgot feedback.
-- Mine: tags, sync status, and settings entry points.
+- Mine: tags, Supabase login, and cloud sync status.

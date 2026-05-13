@@ -7,3 +7,4 @@ dist-electron
 .env.local
 *.log
 unpackage
+AGENTS.md
