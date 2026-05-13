@@ -1,0 +1,30 @@
+{
+  "name": "Keyword Memory",
+  "appid": "__UNI__KEYWORDMEMORY",
+  "description": "极速关键词速记与遮罩复习",
+  "versionName": "0.1.0",
+  "versionCode": "1",
+  "transformPx": false,
+  "app-plus": {
+    "usingComponents": true,
+    "nvueStyleCompiler": "uni-app",
+    "compilerVersion": 3,
+    "splashscreen": {
+      "alwaysShowBeforeRender": true,
+      "waiting": true,
+      "autoclose": true,
+      "delay": 0
+    },
+    "modules": {},
+    "distribute": {
+      "android": {
+        "permissions": [
+          "<uses-permission android:name=\"android.permission.INTERNET\" />"
+        ]
+      }
+    }
+  },
+  "h5": {
+    "title": "Keyword Memory"
+  }
+}

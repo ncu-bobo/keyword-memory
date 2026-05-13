@@ -1,0 +1,147 @@
+page {
+  background:
+    linear-gradient(90deg, rgba(32, 32, 29, 0.035) 1px, transparent 1px) 0 0 / 44px 44px,
+    linear-gradient(0deg, rgba(32, 32, 29, 0.03) 1px, transparent 1px) 0 0 / 44px 44px,
+    #f7f4ec;
+  color: #24231f;
+  font-family: "Avenir Next", "PingFang SC", "Hiragino Sans GB", sans-serif;
+}
+
+.screen {
+  min-height: 100vh;
+  padding: 26px 18px 112px;
+}
+
+.hero {
+  margin-bottom: 18px;
+}
+
+.eyebrow {
+  color: #d84225;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.title {
+  margin-top: 6px;
+  font-family: Georgia, "Songti SC", serif;
+  font-size: 34px;
+  font-weight: 700;
+  line-height: 1.08;
+}
+
+.panel {
+  border: 1px solid #ded6c6;
+  border-radius: 8px;
+  background: rgba(255, 253, 247, 0.94);
+  box-shadow: 0 16px 36px rgba(66, 54, 34, 0.12);
+}
+
+.segmented {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding: 4px;
+  border: 1px solid #ded6c6;
+  border-radius: 8px;
+  background: #eee7da;
+}
+
+.segmented-item {
+  min-height: 38px;
+  border-radius: 6px;
+  text-align: center;
+  line-height: 38px;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.segmented-item.active {
+  background: #20201d;
+  color: #fff7e8;
+}
+
+.field {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.label {
+  color: #787163;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.input,
+.textarea {
+  width: 100%;
+  min-height: 46px;
+  box-sizing: border-box;
+  border: 1px solid #ded6c6;
+  border-radius: 8px;
+  background: #fffaf0;
+  padding: 12px;
+  color: #24231f;
+  font-size: 15px;
+}
+
+.textarea {
+  min-height: 106px;
+}
+
+.button-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.button {
+  flex: 1;
+  min-height: 42px;
+  border: 1px solid #ded6c6;
+  border-radius: 8px;
+  background: #fffdf7;
+  color: #24231f;
+  text-align: center;
+  line-height: 42px;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.button.primary {
+  border-color: #d84225;
+  background: #d84225;
+  color: #fffaf0;
+}
+
+.button.selected {
+  border-color: #b98622;
+  background: #fff2c2;
+  color: #7b5412;
+}
+
+.card {
+  margin-top: 12px;
+  padding: 14px;
+  border-top: 1px solid #ded6c6;
+}
+
+.tag {
+  color: #2f7a5b;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.card-title {
+  margin-top: 6px;
+  font-family: Georgia, "Songti SC", serif;
+  font-size: 24px;
+  line-height: 1.18;
+}
+
+.muted {
+  color: #787163;
+  font-size: 13px;
+  line-height: 1.7;
+}
