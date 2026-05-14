@@ -1,0 +1,116 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 720" width="960" height="720" role="img" aria-labelledby="title desc">
+  <title id="title">Keyword Memory System Architecture</title>
+  <desc id="desc">Architecture diagram for the Keyword Memory monorepo showing clients, shared packages, local storage, Supabase, AI parsing, and MCP operations.</desc>
+  <style>
+    text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', 'Microsoft JhengHei', 'SimHei', sans-serif; }
+    .title { fill: #111827; font-size: 22px; font-weight: 700; }
+    .subtitle { fill: #6b7280; font-size: 12px; }
+    .lane-label { fill: #374151; font-size: 11px; font-weight: 700; letter-spacing: .08em; }
+    .node-title { fill: #111827; font-size: 14px; font-weight: 700; }
+    .node-sub { fill: #6b7280; font-size: 11px; }
+    .small { fill: #6b7280; font-size: 10px; }
+    .label { fill: #374151; font-size: 11px; font-weight: 600; }
+  </style>
+  <defs>
+    <marker id="arrow-blue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#2563eb"/>
+    </marker>
+    <marker id="arrow-green" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#16a34a"/>
+    </marker>
+    <marker id="arrow-purple" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#9333ea"/>
+    </marker>
+    <marker id="arrow-orange" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#ea580c"/>
+    </marker>
+  </defs>
+
+  <rect width="960" height="720" fill="#ffffff"/>
+  <text x="40" y="44" class="title">Keyword Memory 架构图</text>
+  <text x="40" y="66" class="subtitle">本地优先的关键词速记应用：桌面端/移动端共享核心能力，并通过 Supabase 完成认证、云同步与 AI 原文解析。</text>
+
+  <rect x="30" y="92" width="900" height="112" rx="10" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.5" stroke-dasharray="7,5"/>
+  <text x="46" y="113" class="lane-label">CLIENTS</text>
+  <rect x="72" y="126" width="176" height="56" rx="8" fill="#ffffff" stroke="#d1d5db" stroke-width="1.5"/>
+  <rect x="72" y="126" width="176" height="18" rx="8" fill="#dbeafe"/>
+  <text x="160" y="159" text-anchor="middle" class="node-title">Electron Desktop</text>
+  <text x="160" y="174" text-anchor="middle" class="node-sub">Vue 3 · macOS 快捷速记</text>
+
+  <rect x="302" y="126" width="176" height="56" rx="8" fill="#ffffff" stroke="#d1d5db" stroke-width="1.5"/>
+  <rect x="302" y="126" width="176" height="18" rx="8" fill="#dbeafe"/>
+  <text x="390" y="159" text-anchor="middle" class="node-title">uni-app Mobile/H5</text>
+  <text x="390" y="174" text-anchor="middle" class="node-sub">移动端速记与复习</text>
+
+  <rect x="600" y="126" width="220" height="56" rx="8" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.5"/>
+  <text x="710" y="153" text-anchor="middle" class="node-title">用户操作</text>
+  <text x="710" y="170" text-anchor="middle" class="node-sub">录入 · 解析 · 随机复习 · 全量浏览</text>
+
+  <rect x="30" y="234" width="900" height="134" rx="10" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.5" stroke-dasharray="7,5"/>
+  <text x="46" y="255" class="lane-label">APP CORE</text>
+  <rect x="88" y="280" width="190" height="60" rx="8" fill="#ffffff" stroke="#d1d5db" stroke-width="1.5"/>
+  <text x="183" y="306" text-anchor="middle" class="node-title">App.vue UI Shell</text>
+  <text x="183" y="324" text-anchor="middle" class="node-sub">首页 · 复习 · 我的</text>
+
+  <rect x="355" y="280" width="190" height="60" rx="8" fill="#ffffff" stroke="#d1d5db" stroke-width="1.5"/>
+  <text x="450" y="303" text-anchor="middle" class="node-title">@keyword-memory/core</text>
+  <text x="450" y="321" text-anchor="middle" class="node-sub">类型 · 关键词拆分 · 复习排序</text>
+
+  <rect x="622" y="280" width="190" height="60" rx="8" fill="#ffffff" stroke="#d1d5db" stroke-width="1.5"/>
+  <text x="717" y="303" text-anchor="middle" class="node-title">storage.ts</text>
+  <text x="717" y="321" text-anchor="middle" class="node-sub">本地优先 · 云端合并 · upsert</text>
+
+  <rect x="30" y="398" width="900" height="142" rx="10" fill="#faf5ff" stroke="#e9d5ff" stroke-width="1.5" stroke-dasharray="7,5"/>
+  <text x="46" y="419" class="lane-label">PERSISTENCE AND CLOUD</text>
+  <rect x="76" y="444" width="170" height="60" rx="8" fill="#ffffff" stroke="#d1d5db" stroke-width="1.5"/>
+  <text x="161" y="468" text-anchor="middle" class="node-title">localStorage</text>
+  <text x="161" y="486" text-anchor="middle" class="node-sub">离线缓存 · 保底可用</text>
+
+  <rect x="306" y="444" width="170" height="60" rx="8" fill="#ecfdf5" stroke="#86efac" stroke-width="1.5"/>
+  <text x="391" y="468" text-anchor="middle" class="node-title">Supabase Auth</text>
+  <text x="391" y="486" text-anchor="middle" class="node-sub">邮箱登录 · RLS 用户隔离</text>
+
+  <g transform="translate(595 436)">
+    <ellipse cx="70" cy="18" rx="72" ry="16" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.5"/>
+    <rect x="-2" y="18" width="144" height="64" fill="#eff6ff" stroke="none"/>
+    <line x1="-2" y1="18" x2="-2" y2="82" stroke="#93c5fd" stroke-width="1.5"/>
+    <line x1="142" y1="18" x2="142" y2="82" stroke="#93c5fd" stroke-width="1.5"/>
+    <ellipse cx="70" cy="82" rx="72" ry="16" fill="#dbeafe" stroke="#93c5fd" stroke-width="1.5"/>
+    <text x="70" y="48" text-anchor="middle" class="node-title">Postgres</text>
+    <text x="70" y="66" text-anchor="middle" class="node-sub">knowledge_items · review_logs · tags</text>
+  </g>
+
+  <rect x="30" y="570" width="900" height="92" rx="10" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.5" stroke-dasharray="7,5"/>
+  <text x="46" y="591" class="lane-label">AI AND OPERATIONS</text>
+  <rect x="86" y="608" width="190" height="38" rx="8" fill="#ffffff" stroke="#d1d5db" stroke-width="1.5"/>
+  <text x="181" y="632" text-anchor="middle" class="node-title">parse-knowledge Edge Function</text>
+
+  <rect x="358" y="608" width="144" height="38" rx="8" fill="#ffffff" stroke="#d1d5db" stroke-width="1.5"/>
+  <text x="430" y="632" text-anchor="middle" class="node-title">AI Provider</text>
+
+  <rect x="606" y="608" width="214" height="38" rx="8" fill="#ffffff" stroke="#d1d5db" stroke-width="1.5"/>
+  <text x="713" y="632" text-anchor="middle" class="node-title">Codex + Supabase MCP</text>
+
+  <path d="M248 154 H302" stroke="#2563eb" stroke-width="1.8" fill="none" marker-end="url(#arrow-blue)" opacity="0.55"/>
+  <path d="M160 182 V280" stroke="#2563eb" stroke-width="1.8" fill="none" marker-end="url(#arrow-blue)"/>
+  <path d="M390 182 C390 220 255 236 183 280" stroke="#2563eb" stroke-width="1.8" fill="none" marker-end="url(#arrow-blue)"/>
+  <path d="M278 310 H355" stroke="#16a34a" stroke-width="1.8" fill="none" marker-end="url(#arrow-green)"/>
+  <path d="M545 310 H622" stroke="#16a34a" stroke-width="1.8" fill="none" marker-end="url(#arrow-green)"/>
+  <path d="M665 340 C665 382 226 386 161 444" stroke="#16a34a" stroke-width="1.8" fill="none" marker-end="url(#arrow-green)"/>
+  <path d="M717 340 V444" stroke="#9333ea" stroke-width="1.8" fill="none" marker-end="url(#arrow-purple)"/>
+  <path d="M622 472 H476" stroke="#9333ea" stroke-width="1.8" fill="none" marker-end="url(#arrow-purple)"/>
+  <path d="M476 474 H593" stroke="#9333ea" stroke-width="1.8" fill="none" marker-end="url(#arrow-purple)"/>
+  <path d="M183 340 C130 430 137 552 181 608" stroke="#ea580c" stroke-width="1.8" fill="none" marker-end="url(#arrow-orange)"/>
+  <path d="M276 627 H358" stroke="#ea580c" stroke-width="1.8" fill="none" marker-end="url(#arrow-orange)"/>
+  <path d="M502 627 H606" stroke="#9333ea" stroke-width="1.8" fill="none" stroke-dasharray="6,4" marker-end="url(#arrow-purple)"/>
+
+  <rect x="42" y="676" width="500" height="28" rx="6" fill="#ffffff" stroke="#e5e7eb"/>
+  <line x1="56" y1="690" x2="88" y2="690" stroke="#2563eb" stroke-width="1.8" marker-end="url(#arrow-blue)"/>
+  <text x="96" y="694" class="small">UI flow</text>
+  <line x1="166" y1="690" x2="198" y2="690" stroke="#16a34a" stroke-width="1.8" marker-end="url(#arrow-green)"/>
+  <text x="206" y="694" class="small">Local data</text>
+  <line x1="292" y1="690" x2="324" y2="690" stroke="#9333ea" stroke-width="1.8" marker-end="url(#arrow-purple)"/>
+  <text x="332" y="694" class="small">Cloud sync / ops</text>
+  <line x1="438" y1="690" x2="470" y2="690" stroke="#ea580c" stroke-width="1.8" marker-end="url(#arrow-orange)"/>
+  <text x="478" y="694" class="small">AI parse</text>
+</svg>

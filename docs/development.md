@@ -6,13 +6,17 @@ Desktop and mobile clients expect:
 
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_ANON_KEY`
-- `VITE_PARSE_FUNCTION_URL`
 
-The parse Edge Function expects:
+The desktop client reads local AI settings in the Electron main process:
 
 - `AI_API_KEY`
+- `AI_API_ENDPOINT`
 - `AI_BASE_URL`
 - `AI_MODEL`
+
+The Supabase parse Edge Function is still available for future deployment, but
+the current desktop AI parsing flow calls the configured AI provider directly
+from the local Electron app.
 
 ## Desktop
 
@@ -69,6 +73,10 @@ Fill:
 
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_ANON_KEY`
+- `AI_API_KEY`
+- `AI_API_ENDPOINT`
+- `AI_BASE_URL`
+- `AI_MODEL`
 
 Then restart `npm run dev:desktop`. The "我的" page will show the Supabase
 login panel. Existing local knowledge items are merged into the cloud after

@@ -19,20 +19,15 @@ import {
 } from "lucide-vue-next";
 import {
   createLocalKnowledgeItem,
-  createId,
-  isDueForReview,
   sortReviewQueue,
   splitKeywords,
-  type KnowledgeItem,
-  type ParsedKnowledgeItem,
-  type ReviewResult
+  type KnowledgeItem
 } from "@keyword-memory/core";
 import {
   addItems,
   getCurrentUser,
   isSupabaseConfigured,
   loadItems,
-  reviewItem,
   saveItems,
   signInOrSignUp,
   signOut
@@ -40,6 +35,7 @@ import {
 
 type Tab = "capture" | "review" | "me";
 type CaptureMode = "manual" | "ai";
+type ReviewMode = "sample" | "all";
 
 const activeTab = ref<Tab>("capture");
 const captureMode = ref<CaptureMode>("manual");
@@ -49,8 +45,8 @@ const keywordBlocks = ref<string[]>([""]);
 const tag = ref("");
 const pinned = ref(false);
 const sourceText = ref("");
+const sourceExcerpt = ref("");
 const parseStatus = ref<"idle" | "loading" | "ready" | "error">("idle");
-const parsedItems = ref<ParsedKnowledgeItem[]>([]);
 const revealedId = ref<string | null>(null);
 const toast = ref("");
 const supabaseReady = isSupabaseConfigured();
@@ -60,8 +56,9 @@ const currentUserEmail = ref("");
 const syncStatus = ref<"local" | "signed-out" | "syncing" | "synced" | "error">(
   supabaseReady ? "signed-out" : "local"
 );
+const reviewMode = ref<ReviewMode>("sample");
+const sampledReviewIds = ref<string[]>([]);
 
-const dueItems = computed(() => sortReviewQueue(items.value.filter((item) => isDueForReview(item))));
 const manualKeywords = computed(() =>
   Array.from(new Set(keywordBlocks.value.map((keyword) => keyword.trim()).filter(Boolean)))
 );
@@ -69,6 +66,9 @@ const tags = computed(() =>
   Array.from(new Set(items.value.map((item) => item.tag).filter(Boolean) as string[]))
 );
 const savedCount = computed(() => items.value.length);
+const reviewItems = computed(() =>
+  reviewMode.value === "all" ? sortReviewQueue(items.value) : getSampledReviewItems()
+);
 const syncLabel = computed(() => {
   if (!supabaseReady) {
     return "未配置 Supabase";
@@ -89,6 +89,44 @@ const syncLabel = computed(() => {
   return "未登录";
 });
 
+function shuffleItems(sourceItems: KnowledgeItem[]) {
+  return [...sourceItems]
+    .map((item) => ({ item, rank: Math.random() }))
+    .sort((left, right) => left.rank - right.rank)
+    .map(({ item }) => item);
+}
+
+function getSampledReviewItems() {
+  const byId = new Map(items.value.map((item) => [item.id, item]));
+  const sampledItems = sampledReviewIds.value
+    .map((id) => byId.get(id))
+    .filter((item): item is KnowledgeItem => Boolean(item));
+
+  if (sampledItems.length > 0 || items.value.length === 0) {
+    return sampledItems;
+  }
+
+  const nextItems = shuffleItems(items.value).slice(0, 5);
+  sampledReviewIds.value = nextItems.map((item) => item.id);
+  return nextItems;
+}
+
+function setReviewMode(mode: ReviewMode) {
+  reviewMode.value = mode;
+  if (mode === "sample" && sampledReviewIds.value.length === 0) {
+    reshuffleReviewItems();
+  }
+  revealedId.value = null;
+}
+
+function reshuffleReviewItems() {
+  const previousIds = new Set(sampledReviewIds.value);
+  const candidates = items.value.filter((item) => !previousIds.has(item.id));
+  const sourceItems = candidates.length > 0 ? candidates : items.value;
+  sampledReviewIds.value = shuffleItems(sourceItems).slice(0, 5).map((item) => item.id);
+  revealedId.value = null;
+}
+
 function showToast(message: string) {
   toast.value = message;
   window.setTimeout(() => {
@@ -103,6 +141,12 @@ function clearManual() {
   keywordBlocks.value = [""];
   tag.value = "";
   pinned.value = false;
+
+  if (captureMode.value === "ai") {
+    sourceText.value = "";
+    sourceExcerpt.value = "";
+    parseStatus.value = "idle";
+  }
 }
 
 async function addKeywordBlock() {
@@ -164,8 +208,16 @@ async function saveManual() {
     tag: tag.value,
     pinned: pinned.value
   });
+  const trimmedSource = captureMode.value === "ai" ? sourceText.value.trim() : "";
+  const nextItem: KnowledgeItem = trimmedSource
+    ? {
+        ...item,
+        sourceText: trimmedSource,
+        sourceExcerpt: sourceExcerpt.value || trimmedSource.slice(0, 120)
+      }
+    : item;
 
-  items.value = await addItems([item]);
+  items.value = await addItems([nextItem]);
   syncStatus.value = currentUserEmail.value ? "synced" : syncStatus.value;
   clearManual();
   showToast("已保存，进入复习队列");
@@ -178,79 +230,26 @@ async function parseSourceText() {
   }
 
   parseStatus.value = "loading";
-  parsedItems.value = [];
-
-  const functionUrl = import.meta.env.VITE_PARSE_FUNCTION_URL as string | undefined;
+  sourceExcerpt.value = "";
 
   try {
-    if (!functionUrl) {
-      parsedItems.value = fallbackParse(sourceText.value);
-    } else {
-      const response = await fetch(functionUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          text: sourceText.value,
-          preferredTags: ["AI", "程序员技术", "股市投资", "通用知识"]
-        })
-      });
-      const data = await response.json();
-      parsedItems.value = data.items ?? [];
+    if (!window.keywordMemory?.parseKnowledgeText) {
+      throw new Error("Electron AI bridge is unavailable.");
     }
 
+    const parsed = await window.keywordMemory.parseKnowledgeText(sourceText.value.trim());
+
+    title.value = parsed.title;
+    keywordBlocks.value = parsed.keywords.length > 0 ? parsed.keywords : [""];
+    tag.value = parsed.tag ?? "";
+    sourceExcerpt.value = parsed.sourceExcerpt ?? sourceText.value.trim().slice(0, 120);
     parseStatus.value = "ready";
-    showToast("已拆解，可微调后保存");
-  } catch {
+    showToast("已提炼为一个知识点");
+  } catch (error) {
+    console.error("[keyword-memory] AI parse failed", error);
     parseStatus.value = "error";
-    showToast("解析失败，请稍后重试");
+    showToast("AI 解析失败，请检查本地 AI 配置");
   }
-}
-
-function fallbackParse(text: string): ParsedKnowledgeItem[] {
-  const chunks = text.split(/\n{2,}|。|；/).map((chunk) => chunk.trim()).filter(Boolean).slice(0, 5);
-  return chunks.map((chunk) => ({
-    title: chunk.slice(0, 28),
-    keywords: splitKeywords(chunk).slice(0, 8),
-    tag: "待分类",
-    sourceExcerpt: chunk.slice(0, 120)
-  }));
-}
-
-async function saveParsedItems() {
-  const now = new Date().toISOString();
-  const nextItems: KnowledgeItem[] = parsedItems.value
-    .filter((item) => item.title.trim() && item.keywords.length > 0)
-    .map((item) => ({
-      id: createId(),
-      title: item.title.trim(),
-      keywords: item.keywords,
-      tag: item.tag,
-      pinned: false,
-      sourceText: sourceText.value,
-      sourceExcerpt: item.sourceExcerpt,
-      reviewAt: now,
-      reviewLevel: 0,
-      createdAt: now,
-      updatedAt: now
-    }));
-
-  if (nextItems.length === 0) {
-    showToast("没有可保存的知识点");
-    return;
-  }
-
-  items.value = await addItems(nextItems);
-  syncStatus.value = currentUserEmail.value ? "synced" : syncStatus.value;
-  sourceText.value = "";
-  parsedItems.value = [];
-  parseStatus.value = "idle";
-  showToast(`已保存 ${nextItems.length} 条知识点`);
-}
-
-async function handleReview(id: string, result: ReviewResult) {
-  items.value = await reviewItem(id, result);
-  syncStatus.value = currentUserEmail.value ? "synced" : syncStatus.value;
-  revealedId.value = null;
 }
 
 async function togglePin(item: KnowledgeItem) {
@@ -265,10 +264,16 @@ async function refreshItems() {
   syncStatus.value = currentUserEmail.value ? "syncing" : syncStatus.value;
   try {
     items.value = await loadItems();
+    if (reviewMode.value === "sample") {
+      reshuffleReviewItems();
+    }
     syncStatus.value = currentUserEmail.value ? "synced" : syncStatus.value;
   } catch {
     syncStatus.value = "error";
     items.value = await loadItems();
+    if (reviewMode.value === "sample") {
+      reshuffleReviewItems();
+    }
   }
 }
 
@@ -340,7 +345,7 @@ onMounted(async () => {
         <button :class="{ active: activeTab === 'review' }" @click="activeTab = 'review'">
           <BookOpenCheck :size="18" />
           复习
-          <small v-if="dueItems.length">{{ dueItems.length }}</small>
+          <small v-if="savedCount">{{ savedCount }}</small>
         </button>
         <button :class="{ active: activeTab === 'me' }" @click="activeTab = 'me'">
           <UserRound :size="18" />
@@ -369,8 +374,7 @@ onMounted(async () => {
 
       <div
         v-if="activeTab === 'capture'"
-        class="capture-grid"
-        :class="{ 'manual-mode': captureMode === 'manual' }"
+        class="capture-grid manual-mode"
       >
         <section class="panel capture-panel">
           <div class="segmented">
@@ -381,7 +385,7 @@ onMounted(async () => {
           <div v-if="captureMode === 'manual'" class="form-stack">
             <label>
               <span>知识点标题</span>
-              <input v-model="title" autofocus placeholder="例如：React Hooks 闭包陷阱" />
+              <input v-model="title" autofocus />
             </label>
             <label>
               <span>核心关键词</span>
@@ -389,7 +393,6 @@ onMounted(async () => {
                 <div v-for="(_, index) in keywordBlocks" :key="index" class="keyword-block">
                   <input
                     :value="keywordBlocks[index]"
-                    :placeholder="index === 0 ? 'useEffect' : '关键词'"
                     @input="updateKeywordBlock(index, ($event.target as HTMLInputElement).value)"
                   />
                   <button
@@ -412,7 +415,7 @@ onMounted(async () => {
             </div>
             <label>
               <span>归属标签</span>
-              <input v-model="tag" placeholder="不强制，例如：程序员技术" />
+              <input v-model="tag" />
             </label>
 
             <div class="action-row">
@@ -436,52 +439,97 @@ onMounted(async () => {
 
           <div v-else class="form-stack">
             <label>
-              <span>原文</span>
-              <textarea v-model="sourceText" class="source-input" rows="10" placeholder="粘贴文章、帖子、文案或干货笔记" />
+              <span>AI 原文</span>
+              <textarea v-model="sourceText" class="source-input" rows="10" />
             </label>
             <div class="action-row">
-              <button class="soft-button" @click="parseSourceText">
-                <RotateCcw :size="17" />
-                {{ parseStatus === 'ready' ? '重试解析' : 'AI 拆解知识点' }}
+              <button class="soft-button" :disabled="parseStatus === 'loading'" @click="parseSourceText">
+                <Sparkles :size="17" />
+                {{ parseStatus === 'loading' ? '解析中' : parseStatus === 'ready' ? '重新解析' : '解析' }}
               </button>
-              <button class="primary-button" :disabled="parsedItems.length === 0" @click="saveParsedItems">
+            </div>
+
+            <p v-if="parseStatus === 'error'" class="inline-status">解析失败，请检查本地 AI 配置后重试。</p>
+
+            <label>
+              <span>知识点标题</span>
+              <input v-model="title" />
+            </label>
+            <label>
+              <span>核心关键词</span>
+              <div class="keyword-board">
+                <div v-for="(_, index) in keywordBlocks" :key="index" class="keyword-block">
+                  <input
+                    :value="keywordBlocks[index]"
+                    @input="updateKeywordBlock(index, ($event.target as HTMLInputElement).value)"
+                  />
+                  <button
+                    type="button"
+                    class="keyword-remove"
+                    title="移除关键词"
+                    @click="removeKeywordBlock(index)"
+                  >
+                    <X :size="15" />
+                  </button>
+                </div>
+                <button type="button" class="keyword-add" @click="addKeywordBlock">
+                  <Plus :size="16" />
+                  添加关键词
+                </button>
+              </div>
+            </label>
+            <div v-if="manualKeywords.length" class="keyword-preview">
+              <span v-for="keyword in manualKeywords" :key="keyword">{{ keyword }}</span>
+            </div>
+            <label>
+              <span>归属标签</span>
+              <input v-model="tag" />
+            </label>
+
+            <div class="action-row">
+              <button class="icon-button" :class="{ selected: pinned }" title="快捷置顶" @click="pinned = !pinned">
+                <Star :size="18" />
+              </button>
+              <button class="soft-button" @click="clearManual">
+                <Trash2 :size="17" />
+                清空
+              </button>
+              <button class="primary-button" @click="saveManual">
                 <Save :size="17" />
-                保存全部
+                保存
               </button>
             </div>
           </div>
         </section>
-
-        <section v-if="captureMode === 'ai'" class="panel result-panel">
-          <div class="panel-heading">
-            <Sparkles :size="19" />
-            <strong>解析结果</strong>
-          </div>
-          <p v-if="parseStatus === 'idle'" class="empty">长文会被拆成独立知识点，保留标题、关键词、标签和原文溯源。</p>
-          <p v-if="parseStatus === 'loading'" class="empty">正在剔除废话，只留下可复习的核心。</p>
-          <p v-if="parseStatus === 'error'" class="empty">解析失败，可以重试或先手动保存。</p>
-
-          <article v-for="(item, index) in parsedItems" :key="index" class="parsed-card">
-            <input v-model="item.title" class="parsed-title" />
-            <input v-model="item.tag" class="tag-input" />
-            <textarea
-              :value="item.keywords.join('、')"
-              rows="2"
-              @input="item.keywords = splitKeywords(($event.target as HTMLTextAreaElement).value)"
-            />
-            <small>{{ item.sourceExcerpt }}</small>
-          </article>
-        </section>
       </div>
 
       <section v-if="activeTab === 'review'" class="review-list">
-        <article v-if="dueItems.length === 0" class="panel empty-review">
+        <div class="review-toolbar">
+          <div>
+            <strong>{{ reviewMode === 'all' ? '全部知识点' : '随机五个' }}</strong>
+            <span>共 {{ savedCount }} 条，当前展示 {{ reviewItems.length }} 条</span>
+          </div>
+          <div class="review-tools">
+            <button class="soft-button" :class="{ selected: reviewMode === 'sample' }" @click="setReviewMode('sample')">
+              随机五个
+            </button>
+            <button v-if="reviewMode === 'sample'" class="soft-button" @click="reshuffleReviewItems">
+              <RotateCcw :size="17" />
+              换一组
+            </button>
+            <button class="soft-button" :class="{ selected: reviewMode === 'all' }" @click="setReviewMode('all')">
+              全部展示
+            </button>
+          </div>
+        </div>
+
+        <article v-if="reviewItems.length === 0" class="panel empty-review">
           <BookOpenCheck :size="42" />
-          <h2>今天没有待复习</h2>
+          <h2>还没有可复习的知识点</h2>
           <p>新保存的知识点会自动进入这里。</p>
         </article>
 
-        <article v-for="item in dueItems" :key="item.id" class="review-card">
+        <article v-for="item in reviewItems" :key="item.id" class="review-card">
           <div class="review-card-head">
             <span>{{ item.tag || '未分类' }}</span>
             <button class="icon-button" :class="{ selected: item.pinned }" title="置顶" @click="togglePin(item)">
@@ -493,11 +541,6 @@ onMounted(async () => {
             <span v-if="revealedId !== item.id">点击揭晓关键词</span>
             <strong v-else>{{ item.keywords.join('  /  ') }}</strong>
           </button>
-          <div class="review-actions">
-            <button @click="handleReview(item.id, 'forgot')">忘了</button>
-            <button @click="handleReview(item.id, 'vague')">模糊</button>
-            <button class="primary-button" @click="handleReview(item.id, 'remembered')">记住了</button>
-          </div>
         </article>
       </section>
 
@@ -509,8 +552,8 @@ onMounted(async () => {
         </article>
         <article class="panel stat-panel">
           <BookOpenCheck :size="22" />
-          <strong>{{ dueItems.length }}</strong>
-          <span>今日待复习</span>
+          <strong>{{ savedCount }}</strong>
+          <span>可复习条目</span>
         </article>
         <article class="panel settings-panel">
           <div class="panel-heading">
