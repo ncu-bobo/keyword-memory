@@ -188,6 +188,24 @@ async function saveCloudItems(items: KnowledgeItem[]) {
   return true;
 }
 
+async function deleteCloudItem(id: string) {
+  if (!supabase) {
+    return false;
+  }
+
+  const user = await getCurrentUser();
+  if (!user) {
+    return false;
+  }
+
+  const { error } = await supabase.from("knowledge_items").delete().eq("id", id);
+  if (error) {
+    throw error;
+  }
+
+  return true;
+}
+
 export async function loadItems(): Promise<KnowledgeItem[]> {
   const localItems = loadLocalItems();
   const cloudItems = await loadCloudItems().catch(() => null);
@@ -212,6 +230,22 @@ export async function addItems(nextItems: KnowledgeItem[]) {
   const items = sortReviewQueue([...nextItems, ...loadLocalItems()]);
   await saveItems(items);
   return items;
+}
+
+export async function deleteItem(id: string) {
+  const previousItems = loadLocalItems();
+  const nextItems = previousItems.filter((item) => item.id !== id);
+
+  saveLocalItems(nextItems);
+
+  try {
+    await deleteCloudItem(id);
+  } catch (error) {
+    saveLocalItems(previousItems);
+    throw error;
+  }
+
+  return sortReviewQueue(nextItems);
 }
 
 export async function reviewItem(id: string, result: ReviewResult) {

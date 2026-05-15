@@ -8,3 +8,5 @@ dist-electron
 *.log
 unpackage
 AGENTS.md
+release-artifacts
+release-build

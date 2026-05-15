@@ -25,6 +25,7 @@ import {
 } from "@keyword-memory/core";
 import {
   addItems,
+  deleteItem,
   getCurrentUser,
   isSupabaseConfigured,
   loadItems,
@@ -38,7 +39,7 @@ type CaptureMode = "manual" | "ai";
 type ReviewMode = "sample" | "all";
 
 const activeTab = ref<Tab>("capture");
-const captureMode = ref<CaptureMode>("manual");
+const captureMode = ref<CaptureMode>("ai");
 const items = ref<KnowledgeItem[]>([]);
 const title = ref("");
 const keywordBlocks = ref<string[]>([""]);
@@ -53,6 +54,10 @@ const supabaseReady = isSupabaseConfigured();
 const authEmail = ref("");
 const authPassword = ref("");
 const currentUserEmail = ref("");
+const aiBaseUrl = ref("");
+const aiApiKey = ref("");
+const aiHasApiKey = ref(false);
+const aiConfigStatus = ref<"idle" | "saving" | "saved" | "error">("idle");
 const syncStatus = ref<"local" | "signed-out" | "syncing" | "synced" | "error">(
   supabaseReady ? "signed-out" : "local"
 );
@@ -260,6 +265,34 @@ async function togglePin(item: KnowledgeItem) {
   syncStatus.value = currentUserEmail.value ? "synced" : syncStatus.value;
 }
 
+async function handleDeleteItem(item: KnowledgeItem) {
+  if (!window.confirm(`删除「${item.title}」？`)) {
+    return;
+  }
+
+  const previousItems = items.value;
+  const previousSampledIds = sampledReviewIds.value;
+  const nextItems = sortReviewQueue(previousItems.filter((current) => current.id !== item.id));
+
+  items.value = nextItems;
+  sampledReviewIds.value = sampledReviewIds.value.filter((id) => id !== item.id);
+  if (reviewMode.value === "sample" && sampledReviewIds.value.length === 0) {
+    reshuffleReviewItems();
+  }
+  syncStatus.value = currentUserEmail.value ? "syncing" : syncStatus.value;
+  showToast(currentUserEmail.value ? "已删除，正在同步" : "知识点已删除");
+
+  try {
+    await deleteItem(item.id);
+    syncStatus.value = currentUserEmail.value ? "synced" : syncStatus.value;
+  } catch {
+    items.value = previousItems;
+    sampledReviewIds.value = previousSampledIds;
+    syncStatus.value = currentUserEmail.value ? "error" : syncStatus.value;
+    showToast("删除失败，已恢复");
+  }
+}
+
 async function refreshItems() {
   syncStatus.value = currentUserEmail.value ? "syncing" : syncStatus.value;
   try {
@@ -316,12 +349,66 @@ async function handleSignOut() {
   showToast("已退出云同步，本地数据仍可使用");
 }
 
+async function refreshAiConfig() {
+  const config = await window.keywordMemory?.getAiConfig?.();
+  if (!config) {
+    return;
+  }
+
+  aiBaseUrl.value = config.baseUrl;
+  aiHasApiKey.value = config.hasApiKey;
+}
+
+async function saveAiSettings() {
+  if (!aiBaseUrl.value.trim()) {
+    showToast("请填写 Base URL");
+    return;
+  }
+
+  aiConfigStatus.value = "saving";
+
+  try {
+    const config = await window.keywordMemory?.saveAiConfig?.({
+      baseUrl: aiBaseUrl.value,
+      apiKey: aiApiKey.value
+    });
+
+    if (!config) {
+      throw new Error("Electron AI config bridge is unavailable.");
+    }
+
+    aiBaseUrl.value = config.baseUrl;
+    aiHasApiKey.value = config.hasApiKey;
+    aiApiKey.value = "";
+    aiConfigStatus.value = "saved";
+    showToast("AI API 配置已保存");
+  } catch {
+    aiConfigStatus.value = "error";
+    showToast("AI API 配置保存失败");
+  }
+}
+
+async function clearAiSettings() {
+  const config = await window.keywordMemory?.clearAiConfig?.();
+  if (!config) {
+    showToast("AI API 配置清除失败");
+    return;
+  }
+
+  aiBaseUrl.value = config.baseUrl;
+  aiHasApiKey.value = config.hasApiKey;
+  aiApiKey.value = "";
+  aiConfigStatus.value = "idle";
+  showToast("已清除本地 AI API 配置");
+}
+
 onMounted(async () => {
   await refreshAuthState();
   await refreshItems();
+  await refreshAiConfig();
   window.keywordMemory?.onQuickCapture(() => {
     activeTab.value = "capture";
-    captureMode.value = "manual";
+    captureMode.value = "ai";
   });
 });
 </script>
@@ -378,8 +465,8 @@ onMounted(async () => {
       >
         <section class="panel capture-panel">
           <div class="segmented">
-            <button :class="{ active: captureMode === 'manual' }" @click="captureMode = 'manual'">手动速记</button>
             <button :class="{ active: captureMode === 'ai' }" @click="captureMode = 'ai'">AI 原文解析</button>
+            <button :class="{ active: captureMode === 'manual' }" @click="captureMode = 'manual'">手动速记</button>
           </div>
 
           <div v-if="captureMode === 'manual'" class="form-stack">
@@ -532,9 +619,14 @@ onMounted(async () => {
         <article v-for="item in reviewItems" :key="item.id" class="review-card">
           <div class="review-card-head">
             <span>{{ item.tag || '未分类' }}</span>
-            <button class="icon-button" :class="{ selected: item.pinned }" title="置顶" @click="togglePin(item)">
-              <Star :size="17" />
-            </button>
+            <div class="card-actions">
+              <button class="icon-button" :class="{ selected: item.pinned }" title="置顶" @click="togglePin(item)">
+                <Star :size="17" />
+              </button>
+              <button class="icon-button danger" title="删除知识点" @click="handleDeleteItem(item)">
+                <Trash2 :size="17" />
+              </button>
+            </div>
           </div>
           <h2>{{ item.title }}</h2>
           <button class="mask" @click="revealedId = revealedId === item.id ? null : item.id">
@@ -600,6 +692,37 @@ onMounted(async () => {
           </div>
           <button v-for="name in tags" :key="name">{{ name }}</button>
           <p v-if="tags.length === 0">还没有标签。</p>
+        </article>
+        <article class="panel settings-panel ai-settings-panel">
+          <div class="panel-heading">
+            <Sparkles :size="19" />
+            <strong>AI API 配置</strong>
+          </div>
+          <div class="sync-status" :class="aiConfigStatus">
+            <span>{{ aiHasApiKey ? 'API Key 已配置' : '未配置 API Key' }}</span>
+            <small>Base URL 会用于 AI 原文解析；API Key 留空保存时会保留现有值。</small>
+          </div>
+
+          <div class="auth-form">
+            <label>
+              <span>Base URL</span>
+              <input v-model="aiBaseUrl" />
+            </label>
+            <label>
+              <span>API Key</span>
+              <input v-model="aiApiKey" type="password" :placeholder="aiHasApiKey ? '已配置，留空保持不变' : ''" />
+            </label>
+            <div class="sync-actions">
+              <button class="primary-button" :disabled="aiConfigStatus === 'saving'" @click="saveAiSettings">
+                <Save :size="17" />
+                保存配置
+              </button>
+              <button class="soft-button" @click="clearAiSettings">
+                <Trash2 :size="17" />
+                清除本地配置
+              </button>
+            </div>
+          </div>
         </article>
       </section>
     </section>

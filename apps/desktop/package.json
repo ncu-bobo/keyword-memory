@@ -1,18 +1,18 @@
 {
   "name": "@keyword-memory/desktop",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "main": "dist-electron/main.js",
   "scripts": {
-    "dev": "npm run build:electron && concurrently -k \"vite --host 127.0.0.1\" \"wait-on tcp:5173 && electron .\"",
+    "dev": "npm run build:electron && concurrently -k \"vite --host 127.0.0.1\" \"wait-on tcp:5173 && VITE_DEV_SERVER_URL=http://127.0.0.1:5173 electron .\"",
     "build": "vite build && npm run build:electron",
     "build:electron": "node -e \"fs.rmSync('dist-electron',{recursive:true,force:true})\" && tsc -p electron/tsconfig.json",
     "typecheck": "vue-tsc --noEmit"
   },
   "dependencies": {
-    "@keyword-memory/core": "0.1.0",
-    "@keyword-memory/supabase": "0.1.0",
+    "@keyword-memory/core": "0.2.0",
+    "@keyword-memory/supabase": "0.2.0",
     "@vitejs/plugin-vue": "^5.1.2",
     "electron": "^32.1.2",
     "lucide-vue-next": "^0.468.0",

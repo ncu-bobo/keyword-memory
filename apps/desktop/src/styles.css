@@ -433,6 +433,16 @@ label textarea {
   color: #7b5412;
 }
 
+.icon-button.danger {
+  color: var(--muted);
+}
+
+.icon-button.danger:hover {
+  border-color: #e4c5b8;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
 .panel-heading {
   display: flex;
   align-items: center;
@@ -503,12 +513,18 @@ label textarea {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
 }
 
 .review-card-head span {
   color: var(--green);
   font-size: 13px;
   font-weight: 800;
+}
+
+.card-actions {
+  display: flex;
+  gap: 8px;
 }
 
 .review-card h2 {
@@ -599,6 +615,10 @@ label textarea {
   color: var(--accent);
 }
 
+.sync-status.saved span {
+  color: var(--green);
+}
+
 .auth-form {
   display: grid;
   gap: 10px;
@@ -608,6 +628,10 @@ label textarea {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.ai-settings-panel {
+  grid-column: 1 / -1;
 }
 
 .tag-panel {

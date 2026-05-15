@@ -18,6 +18,10 @@ The Supabase parse Edge Function is still available for future deployment, but
 the current desktop AI parsing flow calls the configured AI provider directly
 from the local Electron app.
 
+The "我的" page can also save a local AI Base URL and API key into Electron's
+user data directory. That UI configuration takes precedence over `.env`, while
+`.env` remains the fallback for development and first launch.
+
 ## Desktop
 
 ```bash
@@ -81,6 +85,10 @@ Fill:
 Then restart `npm run dev:desktop`. The "我的" page will show the Supabase
 login panel. Existing local knowledge items are merged into the cloud after
 login.
+
+Deleted knowledge items are removed from local storage and, when logged in, from
+the Supabase `knowledge_items` table. Related `review_logs` are removed by the
+database cascade.
 
 ## Supabase MCP
 

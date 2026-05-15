@@ -11,7 +11,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 
-const isDev = Boolean(process.env.VITE_DEV_SERVER_URL) || !app.isPackaged;
+const devServerUrl = process.env.VITE_DEV_SERVER_URL;
 
 interface ParsedKnowledgePayload {
   title: string;
@@ -32,6 +32,71 @@ interface ResponsesApiResponse {
       type?: string;
     }>;
   }>;
+}
+
+interface AiConfig {
+  baseUrl?: string;
+  apiKey?: string;
+}
+
+interface AiConfigView {
+  baseUrl: string;
+  hasApiKey: boolean;
+}
+
+function getAiConfigPath() {
+  return path.join(app.getPath("userData"), "ai-config.json");
+}
+
+function readSavedAiConfig(): AiConfig {
+  try {
+    const value = fs.readFileSync(getAiConfigPath(), "utf8");
+    const config = JSON.parse(value) as AiConfig;
+
+    return {
+      baseUrl: typeof config.baseUrl === "string" ? config.baseUrl : undefined,
+      apiKey: typeof config.apiKey === "string" ? config.apiKey : undefined
+    };
+  } catch {
+    return {};
+  }
+}
+
+function getAiConfigView(): AiConfigView {
+  const savedConfig = readSavedAiConfig();
+  const baseUrl = savedConfig.baseUrl
+    || readEnvValue("AI_API_ENDPOINT")
+    || readEnvValue("VITE_AI_API_ENDPOINT")
+    || readEnvValue("AI_BASE_URL")
+    || readEnvValue("VITE_AI_BASE_URL")
+    || "https://api.openai.com/v1";
+
+  return {
+    baseUrl,
+    hasApiKey: Boolean(savedConfig.apiKey || readEnvValue("AI_API_KEY") || readEnvValue("VITE_AI_API_KEY"))
+  };
+}
+
+function saveAiConfig(input: AiConfig): AiConfigView {
+  const current = readSavedAiConfig();
+  const nextConfig: AiConfig = {
+    baseUrl: input.baseUrl?.trim() || current.baseUrl,
+    apiKey: input.apiKey?.trim() || current.apiKey
+  };
+
+  fs.mkdirSync(path.dirname(getAiConfigPath()), { recursive: true });
+  fs.writeFileSync(getAiConfigPath(), JSON.stringify(nextConfig, null, 2));
+  return getAiConfigView();
+}
+
+function clearAiConfig(): AiConfigView {
+  try {
+    fs.rmSync(getAiConfigPath(), { force: true });
+  } catch {
+    // Nothing to clear.
+  }
+
+  return getAiConfigView();
 }
 
 function readLocalEnvFile() {
@@ -137,11 +202,19 @@ function extractAiContent(data: ChatCompletionsResponse | ResponsesApiResponse) 
 }
 
 async function parseKnowledgeWithLocalAi(text: string): Promise<ParsedKnowledgePayload> {
-  const apiKey = readEnvValue("AI_API_KEY") || readEnvValue("VITE_AI_API_KEY");
-  const baseUrl = readEnvValue("AI_BASE_URL") || readEnvValue("VITE_AI_BASE_URL") || "https://api.openai.com/v1";
-  const endpoint = readEnvValue("AI_API_ENDPOINT") || readEnvValue("VITE_AI_API_ENDPOINT");
+  const savedConfig = readSavedAiConfig();
+  const apiKey = savedConfig.apiKey || readEnvValue("AI_API_KEY") || readEnvValue("VITE_AI_API_KEY");
+  const baseUrl = savedConfig.baseUrl
+    || readEnvValue("AI_API_ENDPOINT")
+    || readEnvValue("VITE_AI_API_ENDPOINT")
+    || readEnvValue("AI_BASE_URL")
+    || readEnvValue("VITE_AI_BASE_URL")
+    || "https://api.openai.com/v1";
   const model = readEnvValue("AI_MODEL") || readEnvValue("VITE_AI_MODEL") || "gpt-4.1-mini";
-  const requestUrl = endpoint || `${baseUrl.replace(/\/$/, "")}/chat/completions`;
+  const normalizedBaseUrl = baseUrl.replace(/\/$/, "");
+  const requestUrl = normalizedBaseUrl.endsWith("/responses") || normalizedBaseUrl.endsWith("/chat/completions")
+    ? normalizedBaseUrl
+    : `${normalizedBaseUrl}/responses`;
   const usesResponsesApi = requestUrl.endsWith("/responses");
 
   if (!apiKey) {
@@ -208,8 +281,8 @@ function createWindow() {
     }
   });
 
-  if (isDev) {
-    void mainWindow.loadURL("http://127.0.0.1:5173");
+  if (devServerUrl) {
+    void mainWindow.loadURL(devServerUrl);
   } else {
     void mainWindow.loadFile(path.join(__dirname, "../dist/index.html"));
   }
@@ -261,3 +334,6 @@ app.on("will-quit", () => {
 
 ipcMain.handle("clipboard:read-text", () => clipboard.readText());
 ipcMain.handle("ai:parse-knowledge", async (_event, text: string) => parseKnowledgeWithLocalAi(text));
+ipcMain.handle("ai:get-config", () => getAiConfigView());
+ipcMain.handle("ai:save-config", (_event, config: AiConfig) => saveAiConfig(config));
+ipcMain.handle("ai:clear-config", () => clearAiConfig());

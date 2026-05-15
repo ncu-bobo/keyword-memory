@@ -36,6 +36,7 @@ The app is built as a monorepo. Desktop and mobile clients share the same core d
 - **手动速记 / Manual Capture**：输入标题，一块一个关键词，可选标签和置顶，然后保存。
 - **AI 解析 / AI Parsing**：粘贴原文，本地直连 AI provider 后提炼为 1 个知识点，并回填标题与关键词块。
 - **复习 / Review**：从知识库加载全部知识点，默认随机展示 5 个；点击“换一组”会尽量避开上一组，点击“全部展示”可浏览完整列表。
+- **删除 / Delete**：在复习卡片上可以删除知识点，本地数据和云端数据会同步移除。
 
 ## 目录结构 / Project Structure
 
@@ -102,15 +103,15 @@ AI_BASE_URL=https://api.openai.com/v1
 AI_MODEL=gpt-4.1-mini
 ```
 
-桌面端 AI 原文解析会在本地 Electron 主进程中读取 `AI_*` 配置，并直接调用兼容 OpenAI Chat Completions 或 Responses API 的接口。
+桌面端 AI 原文解析会在本地 Electron 主进程中读取 `AI_*` 配置，并直接调用兼容 OpenAI Chat Completions 或 Responses API 的接口。也可以在“我的”页直接配置 Base URL 和 API Key，本地 UI 配置优先于 `.env`。
 
-The desktop AI parser reads `AI_*` values locally and calls an OpenAI-compatible Chat Completions or Responses API endpoint directly.
+The desktop AI parser reads `AI_*` values locally and calls an OpenAI-compatible Chat Completions or Responses API endpoint directly. The Mine page can also store a local Base URL and API key, which take precedence over `.env`.
 
 ## MVP 范围 / MVP Scope
 
 - **首页 / Home**：手动速记、关键词块输入、AI 原文解析。
 - **复习 / Review**：默认随机 5 条知识点，支持“换一组”和“全部展示”。
-- **我的 / Mine**：标签管理、Supabase 登录、同步状态与手动同步。
+- **我的 / Mine**：标签管理、Supabase 登录、同步状态、手动同步、AI API 配置。
 
 ## 当前状态 / Current Status
 

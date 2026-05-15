@@ -9,6 +9,18 @@ interface Window {
       tag?: string;
       sourceExcerpt?: string;
     }>;
+    getAiConfig: () => Promise<{
+      baseUrl: string;
+      hasApiKey: boolean;
+    }>;
+    saveAiConfig: (config: { baseUrl?: string; apiKey?: string }) => Promise<{
+      baseUrl: string;
+      hasApiKey: boolean;
+    }>;
+    clearAiConfig: () => Promise<{
+      baseUrl: string;
+      hasApiKey: boolean;
+    }>;
     onQuickCapture: (callback: () => void) => void;
   };
 }
