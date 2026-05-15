@@ -1,7 +1,7 @@
 {
   "name": "@keyword-memory/desktop",
   "private": true,
-  "version": "0.2.0",
+  "version": "0.2.1",
   "type": "module",
   "main": "dist-electron/main.js",
   "scripts": {
@@ -11,8 +11,8 @@
     "typecheck": "vue-tsc --noEmit"
   },
   "dependencies": {
-    "@keyword-memory/core": "0.2.0",
-    "@keyword-memory/supabase": "0.2.0",
+    "@keyword-memory/core": "0.2.1",
+    "@keyword-memory/supabase": "0.2.1",
     "@vitejs/plugin-vue": "^5.1.2",
     "electron": "^32.1.2",
     "lucide-vue-next": "^0.468.0",

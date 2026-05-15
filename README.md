@@ -72,6 +72,30 @@ npm run dev:desktop
 npm run dev:mobile
 ```
 
+移动端 Android App 资源构建 / Mobile Android App resources:
+
+```bash
+npm run build:mobile:app
+```
+
+这会生成 uni-app App-Plus 资源到 `apps/mobile/dist/build/app`。最终 APK
+需要用 HBuilderX 云打包或 HBuilderX CLI 继续生成，流程见
+[Android APK Build](docs/android-apk.md)。
+
+检查 APK 打包准备状态 / Check APK readiness:
+
+```bash
+npm run check:android-apk
+```
+
+发起 HBuilderX Android 云打包 / Start HBuilderX Android cloud packaging:
+
+```bash
+npm run package:android-apk
+```
+
+当前 DCloud appid：`__UNI__8D8B24B`。DCloud 云打包要求登录账号完成手机号绑定。
+
 运行完整检查 / Run checks:
 
 ```bash

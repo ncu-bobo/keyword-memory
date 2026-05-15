@@ -1,7 +1,7 @@
 {
   "name": "keyword-memory",
   "private": true,
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Keyword-first memory app for fast capture and masked review.",
   "scripts": {
     "dev:desktop": "npm --workspace apps/desktop run dev",
@@ -9,6 +9,9 @@
     "build:desktop": "npm --workspace apps/desktop run build",
     "dev:mobile": "npm --workspace apps/mobile run dev:h5",
     "build:mobile": "npm --workspace apps/mobile run build:h5",
+    "build:mobile:app": "npm --workspace apps/mobile run build:app",
+    "check:android-apk": "node scripts/check-android-apk-env.mjs",
+    "package:android-apk": "node scripts/package-android-apk.mjs",
     "check": "npm run typecheck && npm run build",
     "typecheck": "npm --workspaces run typecheck"
   },

@@ -39,6 +39,7 @@ The macOS client includes:
 ```bash
 npm run dev:mobile
 npm run build:mobile
+npm run build:mobile:app
 ```
 
 The mobile MVP includes:
@@ -51,6 +52,23 @@ The mobile MVP includes:
 The uni-app dependency family is pinned to `3.0.0-alpha-5000920260512001`.
 Keep those versions aligned because mismatched `@dcloudio/*` packages can
 resolve incompatible Vite plugins inside npm workspaces.
+
+`npm run build:mobile:app` builds the uni-app App-Plus resource bundle at
+`apps/mobile/dist/build/app`. It does not produce an APK by itself; final APK
+packaging is done through HBuilderX cloud packaging or HBuilderX CLI. See
+`docs/android-apk.md`.
+
+Use `npm run check:android-apk` to verify whether App resources, Android package
+config, DCloud appid, and HBuilderX CLI are ready for the final APK step.
+
+After HBuilderX is installed and the DCloud account is ready, run:
+
+```bash
+npm run package:android-apk
+```
+
+The helper uses Android cloud certificate packaging. DCloud requires the logged
+in app owner account to bind a mobile phone number before cloud packaging.
 
 ## Verification
 

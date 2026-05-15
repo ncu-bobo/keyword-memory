@@ -92,12 +92,14 @@ page {
 
 .button-row {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   margin-top: 16px;
 }
 
 .button {
   flex: 1;
+  min-width: 72px;
   min-height: 42px;
   border: 1px solid #ded6c6;
   border-radius: 8px;
@@ -119,6 +121,78 @@ page {
   border-color: #b98622;
   background: #fff2c2;
   color: #7b5412;
+}
+
+.button.danger {
+  border-color: #e3b5aa;
+  color: #a93220;
+}
+
+.keyword-board {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.keyword-block {
+  display: flex;
+  align-items: center;
+  flex: 1 1 132px;
+  min-height: 42px;
+  border: 1px solid #ded6c6;
+  border-radius: 8px;
+  background: #fffaf0;
+  overflow: hidden;
+}
+
+.keyword-input {
+  flex: 1;
+  min-width: 0;
+  height: 42px;
+  padding: 0 10px;
+  box-sizing: border-box;
+  border: 0;
+  background: transparent;
+  color: #24231f;
+  font-size: 15px;
+}
+
+.keyword-remove {
+  width: 34px;
+  height: 42px;
+  color: #a93220;
+  text-align: center;
+  line-height: 42px;
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.keyword-add {
+  flex: 1 1 132px;
+  min-height: 42px;
+  border: 1px dashed #b9ae9b;
+  border-radius: 8px;
+  background: #fffdf7;
+  color: #2f7a5b;
+  text-align: center;
+  line-height: 42px;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.review-toolbar {
+  padding: 14px;
+}
+
+.review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.review-actions .button {
+  flex: 1 1 96px;
 }
 
 .card {
