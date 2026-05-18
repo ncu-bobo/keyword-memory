@@ -1,7 +1,7 @@
 {
   "name": "@keyword-memory/mobile",
   "private": true,
-  "version": "0.2.1",
+  "version": "0.2.2",
   "type": "module",
   "scripts": {
     "dev:h5": "uni -p h5",
@@ -15,8 +15,8 @@
     "@dcloudio/uni-cli-shared": "3.0.0-alpha-5000920260512001",
     "@dcloudio/uni-components": "3.0.0-alpha-5000920260512001",
     "@dcloudio/uni-h5": "3.0.0-alpha-5000920260512001",
-    "@keyword-memory/core": "0.2.1",
-    "@keyword-memory/supabase": "0.2.1",
+    "@keyword-memory/core": "0.2.2",
+    "@keyword-memory/supabase": "0.2.2",
     "vue": "^3.5.10"
   },
   "devDependencies": {

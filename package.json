@@ -1,7 +1,7 @@
 {
   "name": "keyword-memory",
   "private": true,
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Keyword-first memory app for fast capture and masked review.",
   "scripts": {
     "dev:desktop": "npm --workspace apps/desktop run dev",

@@ -51,8 +51,8 @@ npm run check:android-apk
 4. Confirm the DCloud appid is `__UNI__8D8B24B`.
 5. Confirm Android settings:
    - Package name: `com.ncubobo.keywordmemory`
-   - Version name: `0.2.1`
-   - Version code: `3`
+   - Version name: `0.2.2`
+   - Version code: `4`
    - Permission: `android.permission.INTERNET`
 6. Choose `Release -> Native App - Cloud Packaging`.
 7. Use Android cloud certificate packaging for new apps.

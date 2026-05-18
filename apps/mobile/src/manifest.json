@@ -2,8 +2,8 @@
   "name": "Keyword Memory",
   "appid": "__UNI__8D8B24B",
   "description": "极速关键词速记与遮罩复习",
-  "versionName": "0.2.1",
-  "versionCode": 3,
+  "versionName": "0.2.2",
+  "versionCode": 4,
   "transformPx": false,
   "app-plus": {
     "usingComponents": true,
